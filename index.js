@@ -1,11 +1,10 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
 import { GoogleAuth } from "google-auth-library";
 
 const app = express();
 
-app.use(cors());
+app.use(cors()); // 🔥 INI WAJIB
 app.use(express.json());
 
 const auth = new GoogleAuth({
@@ -13,8 +12,7 @@ const auth = new GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
 });
 
-// ====== SEND FCM (FIX FINAL) ======
-async function sendFCM(messagePayload) {
+async function sendFCM(token, title, body) {
   const client = await auth.getClient();
   const accessToken = await client.getAccessToken();
   const projectId = await auth.getProjectId();
@@ -28,66 +26,26 @@ async function sendFCM(messagePayload) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: messagePayload
+        message: {
+          token,
+          notification: { title, body },
+        },
       }),
     }
   );
 
   const data = await res.json();
-  console.log("📨 FCM response:", data);
+  console.log("FCM response:", data);
 }
 
-// ====== ENDPOINT ======
 app.post("/send-notif", async (req, res) => {
+  const { token, title, body } = req.body;
+
   try {
-    const { token, title, body, notification, android, data } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ error: "Token wajib ada" });
-    }
-
-    // ===== FIX NOTIFICATION =====
-    let finalNotification;
-
-    if (notification && notification.title) {
-      finalNotification = notification;
-    } else if (title) {
-      finalNotification = {
-        title,
-        body: body || ""
-      };
-    } else {
-      finalNotification = {
-        title: "Notifikasi",
-        body: body || ""
-      };
-    }
-
-    // ===== FINAL PAYLOAD =====
-    const payload = {
-      token,
-      notification: finalNotification,
-
-      android: {
-        notification: {
-          sound: "default",
-          channelId: "default",
-          priority: "high",
-          ...(android?.notification || {})
-        }
-      },
-
-      data: data || {}
-    };
-
-    console.log("🔥 FINAL PAYLOAD:", payload);
-
-    await sendFCM(payload);
-
+    await sendFCM(token, title, body);
     res.json({ success: true });
-
   } catch (e) {
-    console.error("❌ ERROR:", e);
+    console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
