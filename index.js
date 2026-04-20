@@ -1,20 +1,20 @@
 import express from "express";
+import cors from "cors";
 import { GoogleAuth } from "google-auth-library";
 
 const app = express();
+
+app.use(cors()); // 🔥 INI WAJIB
 app.use(express.json());
 
-// 🔥 INIT AUTH (PAKAI ENV)
 const auth = new GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
   scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
 });
 
-// 🔥 FUNCTION KIRIM NOTIF
 async function sendFCM(token, title, body) {
   const client = await auth.getClient();
   const accessToken = await client.getAccessToken();
-
   const projectId = await auth.getProjectId();
 
   const res = await fetch(
@@ -27,11 +27,8 @@ async function sendFCM(token, title, body) {
       },
       body: JSON.stringify({
         message: {
-          token: token,
-          notification: {
-            title: title,
-            body: body,
-          },
+          token,
+          notification: { title, body },
         },
       }),
     }
@@ -41,7 +38,6 @@ async function sendFCM(token, title, body) {
   console.log("FCM response:", data);
 }
 
-// 🔥 ENDPOINT
 app.post("/send-notif", async (req, res) => {
   const { token, title, body } = req.body;
 
@@ -54,7 +50,6 @@ app.post("/send-notif", async (req, res) => {
   }
 });
 
-// 🔥 RUN
 app.listen(3000, () => {
-  console.log("🚀 Server jalan di Railway");
+  console.log("🚀 Server jalan di port 3000");
 });
