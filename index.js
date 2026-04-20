@@ -4,9 +4,9 @@ import { GoogleAuth } from "google-auth-library";
 const app = express();
 app.use(express.json());
 
-// 🔥 INIT AUTH
+// 🔥 INIT AUTH (PAKAI ENV)
 const auth = new GoogleAuth({
-  keyFile: "serviceAccount.json",
+  credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
   scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
 });
 
@@ -56,5 +56,5 @@ app.post("/send-notif", async (req, res) => {
 
 // 🔥 RUN
 app.listen(3000, () => {
-  console.log("🚀 Server jalan di http://localhost:3000");
+  console.log("🚀 Server jalan di Railway");
 });
