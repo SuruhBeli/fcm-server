@@ -1,11 +1,10 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
 import { GoogleAuth } from "google-auth-library";
 
 const app = express();
 
-app.use(cors());
+app.use(cors()); // 🔥 INI WAJIB
 app.use(express.json());
 
 const auth = new GoogleAuth({
@@ -13,8 +12,7 @@ const auth = new GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
 });
 
-// ====== SEND FCM (FLEXIBLE) ======
-async function sendFCM(payload) {
+async function sendFCM(token, title, body) {
   const client = await auth.getClient();
   const accessToken = await client.getAccessToken();
   const projectId = await auth.getProjectId();
@@ -28,51 +26,58 @@ async function sendFCM(payload) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        message: payload
+        message: {
+          token,
+          notification: { title, body },
+        },
       }),
     }
   );
 
   const data = await res.json();
-  console.log("📨 FCM response:", data);
+  console.log("FCM response:", data);
 }
 
-// ====== ENDPOINT ======
 app.post("/send-notif", async (req, res) => {
   try {
-    const {
-      token,
-      title,
-      body,
-      notification,
-      android,
-      data
-    } = req.body;
+    const { token, title, body, notification, android, data } = req.body;
 
     if (!token) {
       return res.status(400).json({ error: "Token wajib ada" });
     }
 
-    // ===== PRIORITAS PAYLOAD =====
-    let finalNotification = notification;
+    // 🔥 FIX: pastikan notification SELALU valid
+    let finalNotification = null;
 
-    // fallback kalau pakai simple mode (home.js)
-    if (!finalNotification && title) {
-      finalNotification = { title, body };
+    if (notification && notification.title) {
+      finalNotification = notification;
+    } else if (title) {
+      finalNotification = { title, body: body || "" };
+    } else {
+      // fallback terakhir (ANTI GAGAL TOTAL)
+      finalNotification = {
+        title: "Notifikasi",
+        body: body || ""
+      };
     }
 
     const payload = {
       token,
       notification: finalNotification,
-      android: android || {
+
+      android: {
         notification: {
           sound: "default",
           channelId: "default",
-          priority: "high"
+          priority: "high",
+          ...(android?.notification || {})
         }
       },
+
       data: data || {}
     };
+
+    console.log("🔥 FINAL PAYLOAD:", payload);
 
     await sendFCM(payload);
 
@@ -83,7 +88,6 @@ app.post("/send-notif", async (req, res) => {
   }
 });
 
-// ====== START SERVER ======
 app.listen(3000, () => {
   console.log("🚀 Server jalan di port 3000");
 });
