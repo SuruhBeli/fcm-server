@@ -39,51 +39,13 @@ async function sendFCM(token, title, body) {
 }
 
 app.post("/send-notif", async (req, res) => {
+  const { token, title, body } = req.body;
+
   try {
-    const { token, title, body, notification, android, data } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ error: "Token wajib ada" });
-    }
-
-    // 🔥 FIX: pastikan notification SELALU valid
-    let finalNotification = null;
-
-    if (notification && notification.title) {
-      finalNotification = notification;
-    } else if (title) {
-      finalNotification = { title, body: body || "" };
-    } else {
-      // fallback terakhir (ANTI GAGAL TOTAL)
-      finalNotification = {
-        title: "Notifikasi",
-        body: body || ""
-      };
-    }
-
-    const payload = {
-      token,
-      notification: finalNotification,
-
-      android: {
-        notification: {
-          sound: "default",
-          channelId: "default",
-          priority: "high",
-          ...(android?.notification || {})
-        }
-      },
-
-      data: data || {}
-    };
-
-    console.log("🔥 FINAL PAYLOAD:", payload);
-
-    await sendFCM(payload);
-
+    await sendFCM(token, title, body);
     res.json({ success: true });
   } catch (e) {
-    console.error("❌ ERROR:", e);
+    console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
